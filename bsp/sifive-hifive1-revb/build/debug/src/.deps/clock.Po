@@ -1,0 +1,6 @@
+src/clock.o: \
+ /home/gra2p/Documents/uva_courses/rp1/src/freedom-metal/src/clock.c \
+ /home/gra2p/Documents/uva_courses/rp1/src/freedom-metal/metal/clock.h \
+ /home/gra2p/Documents/uva_courses/rp1/tools/riscv64-unknown-elf-toolchain-10.2.0-2020.12.8-x86_64-linux-ubuntu14/lib/gcc/riscv64-unknown-elf/10.2.0/include/stddef.h
+/home/gra2p/Documents/uva_courses/rp1/src/freedom-metal/metal/clock.h:
+/home/gra2p/Documents/uva_courses/rp1/tools/riscv64-unknown-elf-toolchain-10.2.0-2020.12.8-x86_64-linux-ubuntu14/lib/gcc/riscv64-unknown-elf/10.2.0/include/stddef.h:

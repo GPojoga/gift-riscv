@@ -1,0 +1,2 @@
+src/entry.o: \
+ /home/gra2p/Documents/uva_courses/rp1/src/freedom-metal/src/entry.S

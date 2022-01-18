@@ -1,0 +1,4 @@
+gloss/sys_exit.o: \
+ /home/gra2p/Documents/uva_courses/rp1/src/freedom-metal/gloss/sys_exit.c \
+ /home/gra2p/Documents/uva_courses/rp1/src/freedom-metal/metal/shutdown.h
+/home/gra2p/Documents/uva_courses/rp1/src/freedom-metal/metal/shutdown.h:
