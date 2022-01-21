@@ -2,7 +2,7 @@
 
 .text
 main:
-  addi sp, zero, 11
-  addi sp, zero, 10
-  addi sp, zero, 9
-  addi sp, zero, 8
+  addi sp, zero, 12
+  addi sp, zero, 13
+  addi sp, zero, 14
+  addi sp, zero, 15

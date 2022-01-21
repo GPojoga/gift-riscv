@@ -1,23 +1,28 @@
 
+gdb_port ?= 3333
+build_dir ?= build
+exec ?= main
+linker ?= linker_script.ld
+
 compile:
-	riscv64-unknown-elf-as -march=rv32imac -mabi=ilp32 main.s -o main.o
-	riscv64-unknown-elf-ld main.o -T linker_script.ld -o main.elf
+	riscv64-unknown-elf-as -march=rv32imac -mabi=ilp32 $(exec).s -o $(exec).o
+	riscv64-unknown-elf-ld $(exec).o -T $(linker) -o $(exec).elf
 	mkdir -p build
-	mv *.elf *.o build
+	mv $(exec).elf $(exec).o $(build_dir)
 
 toHex:
-	riscv64-unknown-elf-objcopy -O ihex build/main.elf  build/main.hex
+	riscv64-unknown-elf-objcopy -O ihex $(build_dir)/$(exec).elf  $(build_dir)/$(exec).hex
 
 build: compile toHex
 
 upload:
-	echo "loadfile build/main.hex\nrnh\nexit" | JLinkExe -device FE310 -if JTAG -speed 4000 -jtagconf -1,-1 -autoconnect 1
+	echo "loadfile $(build_dir)/$(exec).hex\nrnh\nexit" | JLinkExe -device FE310 -if JTAG -speed 4000 -jtagconf -1,-1 -autoconnect 1
 
 openGDB:
-	JLinkGDBServer -device RISC-V -port 3333
+	JLinkGDBServer -device RISC-V -port $(gdb_port)
 
 debug:
-	riscv64-unknown-elf-gdb -ex "target extended-remote localhost:3333" build/main.elf
+	riscv64-unknown-elf-gdb -ex "target extended-remote localhost:$(gdb_port)" $(build_dir)/$(exec).elf
 
 clean:
 	rm -r build
