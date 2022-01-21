@@ -1,11 +1,12 @@
 
 gdb_port ?= 3333
 build_dir ?= build
-exec ?= main
+src_dir ?= practice
+exec ?= memory
 linker ?= linker_script.ld
 
 compile:
-	riscv64-unknown-elf-as -march=rv32imac -mabi=ilp32 $(exec).s -o $(exec).o
+	riscv64-unknown-elf-as -march=rv32imac -mabi=ilp32 $(src_dir)/$(exec).s -o $(exec).o
 	riscv64-unknown-elf-ld $(exec).o -T $(linker) -o $(exec).elf
 	mkdir -p build
 	mv $(exec).elf $(exec).o $(build_dir)
