@@ -1,2 +1,0 @@
-gloss/crt0.o: \
- /home/gra2p/Documents/uva_courses/rp1/src/freedom-metal/gloss/crt0.S

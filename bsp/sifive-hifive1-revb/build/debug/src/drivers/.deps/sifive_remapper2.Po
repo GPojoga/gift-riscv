@@ -1,4 +1,0 @@
-src/drivers/sifive_remapper2.o: \
- /home/gra2p/Documents/uva_courses/rp1/src/freedom-metal/src/drivers/sifive_remapper2.c \
- metal/machine/platform.h
-metal/machine/platform.h:

@@ -1,4 +1,0 @@
-src/drivers/sifive_gpio-buttons.o: \
- /home/gra2p/Documents/uva_courses/rp1/src/freedom-metal/src/drivers/sifive_gpio-buttons.c \
- metal/machine/platform.h
-metal/machine/platform.h:
