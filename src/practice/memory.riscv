@@ -1,0 +1,15 @@
+
+.text
+  .globl main
+
+  main:
+    la t0, input # compute the input address
+    lw t0, 0(t0) # load the input value
+    la t1, output # compute the output address
+    sb t0, 0(t1) # store the input value to the output address
+
+.section .rodata
+  input: .word 11
+
+.section .bss
+  output: .word 

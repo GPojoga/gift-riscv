@@ -1,0 +1,14 @@
+
+.section .text
+	.globl main
+
+	main:
+		li t0, 5
+		li t1, 7
+		bge t0, t1, ELSE # if t0 < t1
+		THEN:
+			li t2, 7
+			jal zero, DONE
+		ELSE:
+			li t2, 42
+		DONE:

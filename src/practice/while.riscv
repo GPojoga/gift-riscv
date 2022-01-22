@@ -1,0 +1,15 @@
+
+
+.section .text
+	.globl main
+
+	main:
+		li t0, 0
+		li t1, 3
+
+		WHILE: bge t0, t1, DONE
+			addi t0, t0, 1
+			j WHILE
+		DONE:
+
+		END: j END

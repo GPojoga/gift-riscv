@@ -1,0 +1,14 @@
+
+
+.section .text
+	.globl main
+
+	main:
+		li t0, 0
+		li t1, 3
+		DO:
+			addi t0, t0, 1
+		blt t0, t1, DO # while t0 < t1 
+	
+	END: j END
+	

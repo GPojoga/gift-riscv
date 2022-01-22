@@ -1,0 +1,46 @@
+
+.section .text
+	.globl main
+
+	add1:
+		addi a0, a0, 1
+		jalr zero, 0(ra)
+
+	add2:
+		addi sp, sp, -4
+		sw ra, 0(sp)
+
+		jal ra, add1
+		jal ra, add1
+		
+		lw ra, 0(sp)
+		addi sp, sp, 4
+		jalr zero, 0(ra)
+
+	add3:
+		addi sp, sp, -4 # allocate stack frame
+		sw ra, 0(sp) # store return address in the stack
+		
+		jal ra, add2
+		jal ra, add1
+
+		lw ra, 0(sp) # get return address
+		addi sp, sp, 4 # restore stack pointer
+		jalr zero, 0(ra) # return
+
+	main:
+		la t0, x
+		lw a0, 0(t0) # load x; and set it as function argument
+		
+		jal ra, add3 # call add3 | not using pseudo on purpose ;)
+		
+		la t0, output
+		sw a0, 0(t0) # store output
+	
+	END: j END
+
+.section .rodata
+	x: .word 7
+
+.section .bss
+	output: .word

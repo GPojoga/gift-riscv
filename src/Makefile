@@ -2,12 +2,17 @@
 gdb_port ?= 3333
 build_dir ?= build
 src_dir ?= practice
-exec ?= memory
+exec ?= function
 linker ?= linker_script.ld
 
+debug_flags ?= -ex "x/30i 0x20010000" -ex "b *main" -ex "j *main" 
+
+ASFlags = -march=rv32imac -mabi=ilp32 -g
+LDFlags = -T $(linker)
+
 compile:
-	riscv64-unknown-elf-as -march=rv32imac -mabi=ilp32 $(src_dir)/$(exec).s -o $(exec).o
-	riscv64-unknown-elf-ld $(exec).o -T $(linker) -o $(exec).elf
+	riscv64-unknown-elf-as $(ASFlags) $(src_dir)/$(exec).riscv -o $(exec).o
+	riscv64-unknown-elf-ld $(LDFlags) $(exec).o -o $(exec).elf
 	mkdir -p build
 	mv $(exec).elf $(exec).o $(build_dir)
 
@@ -23,7 +28,7 @@ openGDB:
 	JLinkGDBServer -device RISC-V -port $(gdb_port)
 
 debug:
-	riscv64-unknown-elf-gdb -ex "target extended-remote localhost:$(gdb_port)" $(build_dir)/$(exec).elf
+	riscv64-unknown-elf-gdb -ex "target extended-remote localhost:$(gdb_port)" $(debug_flags) $(build_dir)/$(exec).elf
 
 clean:
 	rm -r build
