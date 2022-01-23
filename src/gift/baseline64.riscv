@@ -7,7 +7,7 @@
 		mv t4, zero # counter
 		li t5, 8 # limit for while
 
-		DO:
+		DO_0:
 		
 		andi t1, t0, 0xf # mask the rightmost nibble
 		div t2, t1, s1 # find the byte in the s-box
@@ -22,7 +22,37 @@
 		or t0, t0, t1 # introduce substituted nibble in the plaintext
 		
 		addi t4, t4, 1 # increment counter
-		WHILE: bne t4, t5, DO # while t0 < t1 
+		WHILE_0: bne t4, t5, DO_0 # while t4 < t5 
+		
+		jalr zero, 0(ra) # return
+
+	PERM:
+		mv t2, zero # counter
+		li t3, 32 # limit for while
+
+		DO_1:
+		lb t4, 0(s0) # load the new position
+		mv t5, t0 # make a copy of input
+		
+		sub t6, s3, t2 # compute the left shift : t6 = 31 - pos
+		sll t5, t5, t6 # clear left bits | _
+		srl t5, t5, s3 # clear left bits | used instead of mask
+
+		bge t4, t3, ELSE_1 # if new pos < 32
+		THEN_1:
+			sll t5, t5, t4 # move to the new position
+			or s1, s1, t5 # store the result
+
+			jal zero, DONE_1
+		ELSE_1:
+			sub t4, t4, t3 # correct new pos | new_pos = new_pos - 32
+			sll t5, t5, t4 # move to the new position
+			or s2, s2, t5 # store the result | 
+		DONE_1:
+
+		addi s0, s0, 1 # increment p-box location 
+		addi t2, t2, 1 # increment counter
+		WHILE_1: bne t2, t3, DO_1 # while t2 < t3
 		
 		jalr zero, 0(ra) # return
 
@@ -43,18 +73,31 @@
 		li s1, 2 # constant : used for division
 		li s2, 4 # constant : used for multiplication  
 
-		DEBUG1:
-		mv t0, a0 # process first 32-bits of plaintext
+		mv t0, a0 # process first 32-bits
 		jal SUBST
 		mv a0, t0
 		
-		DEBUG2:
-		mv t0, a1 # process second 32-bits of plaintext
+		mv t0, a1 # process second 32-bits
 		jal SUBST
 		mv a1, t0
-		DEBUG3:
 		#--------------
 		#---Permbits---
+		PermBits:
+		la s0, p_box # get pbox address
+		mv s1, zero # will hold the resulting 1st 32-bits
+		mv s2, zero # will hold the resulting last 32-bits
+		li s3, 31 # constant : used for shifting
+
+		DEBUG1:
+		mv t0, a1 # process first 32-bits
+		jal PERM
+
+		DEBUG2:
+		mv t0, a0 # process last 32-bits
+		jal PERM 
+		
+		mv a1, s1 #store results
+		mv a0, s2 
 		#--------------
 
 	END: j END
@@ -64,3 +107,4 @@
 	key: .word 0xfedcba98, 0x76543210, 0xfedcba98, 0x76543210
 
 	s_box: .byte 0x1a, 0x4c, 0x6f, 0x39, 0x2d, 0xb7, 0x50, 0x8e
+	p_box: .byte 0, 17, 34, 51, 48, 1, 18, 35, 32, 49, 2, 19, 16, 33, 50, 3, 4, 21, 38, 55, 52, 5, 22, 39, 36, 53, 6, 23, 20, 37, 54, 7, 8,  25, 42, 59, 56, 9, 26, 43, 40, 57, 10, 27, 24, 41, 58, 11, 12, 29, 46, 63, 60, 13, 30, 47, 44, 61, 14, 31, 28, 45, 62, 15
