@@ -8,6 +8,6 @@ MEMORY
 SECTIONS
 {
     .text : { *(.text*) } > rom
-    .rodata : { *(.rodata*) } > rom
+    .rodata : ALIGN(4) { *(.rodata*) } > rom
     .bss : { *(.bss*) } > ram 
 }

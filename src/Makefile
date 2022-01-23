@@ -1,11 +1,12 @@
 
 gdb_port ?= 3333
 build_dir ?= build
-src_dir ?= practice
-exec ?= function
+src_dir ?= gift
+exec ?= baseline64
 linker ?= linker_script.ld
 
-debug_flags ?= -ex "x/30i 0x20010000" -ex "b *main" -ex "j *main" 
+debug_flags ?= -ex "x/35i 0x20010000" -ex "b *main" -ex "j *main" -ex "b DEBUG1" -ex "b DEBUG2" -ex "b END"
+
 
 ASFlags = -march=rv32imac -mabi=ilp32 -g
 LDFlags = -T $(linker)

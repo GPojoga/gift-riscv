@@ -1,0 +1,66 @@
+
+.section .text
+	.globl main
+
+	SUBST: # SubCells | substitute a single nibble
+		
+		mv t4, zero # counter
+		li t5, 8 # limit for while
+
+		DO:
+		
+		andi t1, t0, 0xf # mask the rightmost nibble
+		div t2, t1, s1 # find the byte in the s-box
+		rem t3, t1, s1 # 0:left-most nibble | 1:right-most nibble
+		xori t3, t3, 1 # 1:left-most nibble | 0:right-most nibble
+		mul t3, t3, s2 # 4:left-most nibble | 0:right-most nibble
+		add t1, s0, t2 # compute address of substitution byte
+		lb t1, 0(t1) # load substitution byte
+		srl t1, t1, t3 # subst. nibble is the right most
+		slli t1, t1, 28 # subst. nibble is the left most in 32-bit word
+		srli t0, t0, 4 # shift plaintext to right by 1 nibble
+		or t0, t0, t1 # introduce substituted nibble in the plaintext
+		
+		addi t4, t4, 1 # increment counter
+		WHILE: bne t4, t5, DO # while t0 < t1 
+		
+		jalr zero, 0(ra) # return
+
+	main:
+		#---Initialization---
+		la a0, plaintext # load the plaintext
+		lw a1, 4(a0)
+		lw a0, 0(a0) 
+		la a4, key # load the key
+		lw a5, 4(a4)
+		lw a6, 8(a4)
+		lw a7, 12(a4)
+		lw a4, 0(a4)
+		#--------------------
+		#---SubCells---
+		SubCells:
+		la s0, s_box # get sbox address
+		li s1, 2 # constant : used for division
+		li s2, 4 # constant : used for multiplication  
+
+		DEBUG1:
+		mv t0, a0 # process first 32-bits of plaintext
+		jal SUBST
+		mv a0, t0
+		
+		DEBUG2:
+		mv t0, a1 # process second 32-bits of plaintext
+		jal SUBST
+		mv a1, t0
+		DEBUG3:
+		#--------------
+		#---Permbits---
+		#--------------
+
+	END: j END
+
+.section .rodata
+	plaintext: .word 0xfedcba98, 0x76543210
+	key: .word 0xfedcba98, 0x76543210, 0xfedcba98, 0x76543210
+
+	s_box: .byte 0x1a, 0x4c, 0x6f, 0x39, 0x2d, 0xb7, 0x50, 0x8e
