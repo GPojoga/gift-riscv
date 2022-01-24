@@ -4,10 +4,9 @@
 	.globl main
 
 	main:
-		la t0, val
-		li t1, 1
-		div t1, t1, t0
-		lb t2, 0(t1)
+		la t0, 5
+		srai t0, t0, 4
+
 
 .section .rodata
 	val: .byte 0x11, 0x42, 0x22, 0x33

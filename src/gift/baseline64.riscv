@@ -10,11 +10,11 @@
 		DO_0:
 		
 		andi t1, t0, 0xf # mask the rightmost nibble
-		div t2, t1, s1 # find the byte in the s-box
-		rem t3, t1, s1 # 0:left-most nibble | 1:right-most nibble
+		div t2, t1, s4 # find the byte in the s-box
+		rem t3, t1, s4 # 0:left-most nibble | 1:right-most nibble
 		xori t3, t3, 1 # 1:left-most nibble | 0:right-most nibble
-		mul t3, t3, s2 # 4:left-most nibble | 0:right-most nibble
-		add t1, s0, t2 # compute address of substitution byte
+		mul t3, t3, s5 # 4:left-most nibble | 0:right-most nibble
+		add t1, s3, t2 # compute address of substitution byte
 		lb t1, 0(t1) # load substitution byte
 		srl t1, t1, t3 # subst. nibble is the right most
 		slli t1, t1, 28 # subst. nibble is the left most in 32-bit word
@@ -31,80 +31,228 @@
 		li t3, 32 # limit for while
 
 		DO_1:
-		lb t4, 0(s0) # load the new position
+		lb t4, 0(s3) # load the new position
 		mv t5, t0 # make a copy of input
 		
-		sub t6, s3, t2 # compute the left shift : t6 = 31 - pos
+		sub t6, s6, t2 # compute the left shift : t6 = 31 - pos
 		sll t5, t5, t6 # clear left bits | _
-		srl t5, t5, s3 # clear left bits | used instead of mask
+		srl t5, t5, s6 # clear left bits | used instead of mask
 
 		bge t4, t3, ELSE_1 # if new pos < 32
 		THEN_1:
 			sll t5, t5, t4 # move to the new position
-			or s1, s1, t5 # store the result
+			or s4, s4, t5 # store the result
 
 			jal zero, DONE_1
 		ELSE_1:
 			sub t4, t4, t3 # correct new pos | new_pos = new_pos - 32
 			sll t5, t5, t4 # move to the new position
-			or s2, s2, t5 # store the result | 
+			or s5, s5, t5 # store the result | 
 		DONE_1:
 
-		addi s0, s0, 1 # increment p-box location 
+		addi s3, s3, 1 # increment p-box location 
 		addi t2, t2, 1 # increment counter
 		WHILE_1: bne t2, t3, DO_1 # while t2 < t3
 		
 		jalr zero, 0(ra) # return
 
+	KEY:
+		#---add round key---
+		mv t0, zero # counter
+		li t1, 8 # limit for while
+
+		DO_2: # add round key to lower 32-bits
+
+		mv t2, a0 # V 
+		mv t3, a1 # U
+
+		srl t2, t2, t0 # v_i is the right-most bit
+		srl t3, t3, t0 # u_i is the left-most bit
+
+		andi t2, t2, 0x1 # mask the right-most bit (v_i)
+		andi t3, t3, 0x1 # mask the right-most bit (u_i)
+
+		mv t4, t0 	  # i = counter
+		slli t4, t4, 2 # i = i * 4
+
+		sll t2, t2, t4 # move bit v_i to position i
+		addi t4, t4, 1 # i = i + 1
+		sll t3, t3, t4 # move bit u_i to position i
+
+		xor s1, s1, t2 # xor v_i with the plaintext
+		xor s1, s1, t3 # xor u_i withe the plaintext 
+
+		addi t0, t0, 1 # increment counter
+		WHILE_2: bne t0, t1, DO_2 # while t0 < t1
+
+		li t1, 16 # limit for while
+
+		DO_3: # add round key to upper 32-bits
+
+		mv t2, a0 # V
+		mv t3, a1 # U
+
+		srl t2, t2, t0 # v_i is the right-most bit
+		srl t3, t3, t0 # u_i is the left-most bit
+
+		andi t2, t2, 0x1 # mask the right-most bit (v_i)
+		andi t3, t3, 0x1 # mask the right-most bit (u_i)
+
+		mv t4, t0 	  # i = counter
+		slli t4, t4, 2 # i = i * 4
+
+		sll t2, t2, t4 # move bit v_i to position i
+		addi t4, t4, 1 # i = i + 1
+		sll t3, t3, t4 # move bit u_i to position i
+
+		xor s0, s0, t2 # xor v_i with the plaintext
+		xor s0, s0, t3 # xor u_i withe the plaintext 
+
+		# HOW TO xor THE KEY ???
+		addi t0, t0, 1 # increment counter
+		WHILE_3: bne t0, t1, DO_3 # while t0 < t1
+		#---add round constant---
+
+		mv t0, zero # counter
+		li t1, 6 # while_bound
+		li t2, 3 # i for b_i
+		DO_4:
+		
+		mv t3, s2 # copy round constant
+		srl t3, t3, t0
+		andi t3, t3, 0x1 # mask the right most bit : c_1
+		sll t3, t3, t2 # match b_7
+		xor s1, s1, t3 # apply round constant
+
+		addi t2, t2, 4 # increment i of b_i
+		addi t0, t0, 1 # increment counter
+		WHILE_4: bne t0, t1, DO_4 # while t0 < t1		
+		
+		li t0, 0x80000000
+		xor s0, s0, t0 # b_{n-1} = b_{n-1} xor 1
+
+		#---update key---
+		mv t0, a0 # copy k_0
+		srli t0, t0, 12 # k_0 >> 12
+		slli a0, a0, 20 # isolate the trucated 12 bits
+		srli a0, a0, 16 # move trucated bits to the right position
+		or t0, t0, a0 # k_0 >>> 12
+
+		mv t1, a1 # copy k_1
+		srli t1, t1, 2 # k_1 >> 2
+		andi a1, a1, 0x3 # isolate the truncated 2 bits
+		slli a1, a1, 14 # move truncated bits to the right position
+		or t1, t1, a1 # k_1 >>> 2
+
+		mv a0, a2
+		mv a1, a3
+		mv a2, a4
+		mv a3, a5
+		mv a4, a6
+		mv a5, a7
+		mv a6, t0
+		mv a7, t1
+
+		#---update round constant---
+
+		mv t4, s2 
+		mv t5, s2 
+
+		srli t4, t4, 4
+		srli t5, t5, 5
+
+		andi t4, t4, 0x1 # isolated c_4
+		andi t5, t5, 0x1 # isolated c_5
+
+		xor t4, t4, t5 # c_4 xor c_5
+		xori t4, t4, 0x1 # c_4 xor c_5 xor 1
+
+		slli s2, s2, 1 # c << 1
+		or s2, s2, t4 # c_0 = c_4 xor c_5 xor 1
+		
+		jalr zero, 0(ra) # return
+
 	main:
 		#---Initialization---
-		la a0, plaintext # load the plaintext
-		lw a1, 4(a0)
-		lw a0, 0(a0) 
-		la a4, key # load the key
-		lw a5, 4(a4)
-		lw a6, 8(a4)
-		lw a7, 12(a4)
-		lw a4, 0(a4)
+		li s2, 0x1 # round constant
+
+		la s0, txt3_e # plaintext
+		lw s1, 4(s0)
+		lw s0, 0(s0) 
+		
+		la a0, key3 # key
+		li t0, 0xffff # when hw is loaded unused bits are set to 1. we must clean it
+		lh a1, 14(a0)
+		and a1, a1, t0
+		lh a2, 8(a0)
+		and a2, a2, t0
+		lh a3, 10(a0)
+		and a3, a3, t0
+		lh a4, 4(a0)
+		and a4, a4, t0
+		lh a5, 6(a0)
+		and a5, a5, t0
+		lh a6, 0(a0)
+		and a6, a6, t0
+		lh a7, 2(a0)
+		and a7, a7, t0
+		lh a0, 12(a0)
+		and a0, a0, t0
 		#--------------------
-		#---SubCells---
-		SubCells:
-		la s0, s_box # get sbox address
-		li s1, 2 # constant : used for division
-		li s2, 4 # constant : used for multiplication  
+		mv s10, zero # counter
+		li s11, 28 # limit for while
+		DO_5:
+			#---SubCells---
+			SubCells:
+			la s3, s_box # get sbox address
+			li s4, 2 # constant : used for division
+			li s5, 4 # constant : used for multiplication  
 
-		mv t0, a0 # process first 32-bits
-		jal SUBST
-		mv a0, t0
-		
-		mv t0, a1 # process second 32-bits
-		jal SUBST
-		mv a1, t0
-		#--------------
-		#---Permbits---
-		PermBits:
-		la s0, p_box # get pbox address
-		mv s1, zero # will hold the resulting 1st 32-bits
-		mv s2, zero # will hold the resulting last 32-bits
-		li s3, 31 # constant : used for shifting
+			mv t0, s0 # process first 32-bits
+			jal SUBST
+			mv s0, t0
+			
+			mv t0, s1 # process second 32-bits
+			jal SUBST
+			mv s1, t0
+			#--------------
+			#---Permbits---
+			PermBits:
+			la s3, p_box # get pbox address
+			mv s4, zero # will hold the resulting 1st 32-bits
+			mv s5, zero # will hold the resulting last 32-bits
+			li s6, 31 # constant : used for shifting
 
-		DEBUG1:
-		mv t0, a1 # process first 32-bits
-		jal PERM
+			mv t0, s1 # process first 32-bits
+			jal PERM
 
-		DEBUG2:
-		mv t0, a0 # process last 32-bits
-		jal PERM 
-		
-		mv a1, s1 #store results
-		mv a0, s2 
-		#--------------
+			mv t0, s0 # process last 32-bits
+			jal PERM 
+			
+			mv s1, s4 #store results
+			mv s0, s5 
+			#--------------
+			#---AddRoundKey---
+			AddRoundKey:
+			jal KEY
+
+		addi s10, s10, 1 # increment counter
+		WHILE_5: bne s10, s11, DO_5 # while s10 < s11
 
 	END: j END
 
 .section .rodata
-	plaintext: .word 0xfedcba98, 0x76543210
-	key: .word 0xfedcba98, 0x76543210, 0xfedcba98, 0x76543210
+	txt1_e: .word 0x0, 0x0
+	txt1_d: .word 0xf62bc3ef, 0x34f775ac
+	key1: .word 0x0, 0x0, 0x0, 0x0
+
+	txt2_e: .word 0xfedcba98, 0x76543210
+	txt2_d: .word 0xc1b71f66, 0x160ff587  
+	key2: .word 0xfedcba98, 0x76543210, 0xfedcba98, 0x76543210 
+
+	txt3_e: .word 0xc450c772, 0x7a9b8a7d 
+	txt3_d: .word 0xe3272885, 0xfa94ba8b 
+	key3: .word 0xbd91731e, 0xb6bc2713, 0xa1f9f6ff, 0xc75044e7 
 
 	s_box: .byte 0x1a, 0x4c, 0x6f, 0x39, 0x2d, 0xb7, 0x50, 0x8e
 	p_box: .byte 0, 17, 34, 51, 48, 1, 18, 35, 32, 49, 2, 19, 16, 33, 50, 3, 4, 21, 38, 55, 52, 5, 22, 39, 36, 53, 6, 23, 20, 37, 54, 7, 8,  25, 42, 59, 56, 9, 26, 43, 40, 57, 10, 27, 24, 41, 58, 11, 12, 29, 46, 63, 60, 13, 30, 47, 44, 61, 14, 31, 28, 45, 62, 15
