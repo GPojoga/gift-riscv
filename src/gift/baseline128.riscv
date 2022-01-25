@@ -183,7 +183,7 @@
 
 	main:
 		#---Initialization---
-		la t0, txt2 # plaintext
+		la t0, txt3 # plaintext
 		lw s0, 12(t0)
 		lw s1, 8(t0)
 		lw s2, 4(t0)
@@ -191,7 +191,7 @@
 		
 		li s4, 0x1 # round constant
 
-		la t0, key1 # key
+		la t0, key3 # key
 		li t1, 0xffff # when hw is loaded unused bits are set to 1. we must clean it
 		lh a1, 14(t0)
 		and a1, a1, t1
@@ -266,10 +266,15 @@
 		WHILE_3: bne s10, zero, DO_3 # loop count != zero
 		END: j END
 
-
 .section .rodata
-	txt2: .word 0xfedcba98, 0x76543210, 0xfedcba98, 0x76543210 
-	key1: .word 0xfedcba98, 0x76543210, 0xfedcba98, 0x76543210 
+	txt1: .word 0x0, 0x0, 0x0, 0x0 
+	key1: .word 0x0, 0x0, 0x0, 0x0
 
+	txt2: .word 0xfedcba98, 0x76543210, 0xfedcba98, 0x76543210 
+	key2: .word 0xfedcba98, 0x76543210, 0xfedcba98, 0x76543210 
+
+	txt3: .word 0xe39c141f, 0xa57dba43, 0xf08a85b6, 0xa91f86c1
+	key3: .word 0xd0f5c59a, 0x7700d3e7, 0x99028fa9, 0xf90ad837 
+ 
 	s_box: .byte 0x1a, 0x4c, 0x6f, 0x39, 0x2d, 0xb7, 0x50, 0x8e
 	p_box: .byte 0, 33, 66, 99, 96, 1, 34, 67, 64, 97, 2, 35, 32, 65, 98, 3, 4, 37, 70, 103, 100, 5, 38, 71, 68, 101, 6, 39, 36, 69, 102, 7, 8, 41, 74, 107, 104, 9, 42, 75, 72, 105, 10, 43, 40, 73, 106, 11, 12, 45, 78, 111, 108, 13, 46, 79, 76, 109, 14, 47, 44, 77, 110, 15, 16, 49, 82, 115, 112, 17, 50, 83, 80, 113, 18, 51, 48, 81, 114, 19, 20, 53, 86, 119, 116, 21, 54, 87, 84, 117, 22, 55, 52, 85, 118, 23, 24, 57, 90, 123, 120, 25, 58, 91, 88, 121, 26, 59, 56, 89, 122, 27, 28, 61, 94, 127, 124, 29, 62, 95, 92, 125, 30, 63, 60, 93, 126, 31
