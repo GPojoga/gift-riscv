@@ -4,8 +4,8 @@
 	.globl main
 
 	main:
-		la t0, 5
-		srai t0, t0, 4
+		li t0, 5
+		addi t0, t0, -2
 
 
 .section .rodata
