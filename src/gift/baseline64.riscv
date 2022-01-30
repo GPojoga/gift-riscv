@@ -175,11 +175,11 @@
 		#---Initialization---
 		li s2, 0x1 # round constant
 
-		la s0, txt3_e # plaintext
+		la s0, txt2_e # plaintext
 		lw s1, 4(s0)
 		lw s0, 0(s0) 
 		
-		la a0, key3 # key
+		la a0, key2 # key
 		li t0, 0xffff # when hw is loaded unused bits are set to 1. we must clean it
 		lh a1, 14(a0)
 		and a1, a1, t0

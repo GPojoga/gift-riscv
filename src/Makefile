@@ -2,7 +2,7 @@
 gdb_port ?= 3333
 build_dir ?= build
 src_dir ?= gift
-exec ?= baseline128
+exec ?= bitslice64
 linker ?= linker_script.ld
 
 debug_flags ?= -ex "x/35i 0x20010000" -ex "b *main" -ex "j *main" -ex "b END"

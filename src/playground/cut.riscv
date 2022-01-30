@@ -4,8 +4,8 @@
 	.globl main
 
 	main:
-		li t0, 5
-		addi t0, t0, -2
+		la t0, val
+		lb t1, 1(t0)
 
 
 .section .rodata
