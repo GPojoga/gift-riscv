@@ -2,6 +2,7 @@
 # a0 - a7 : key
 # s4 : round constant address
 # s5 : while counter
+# s6 : round key address 
 # s11 : constant
 
 .section .text

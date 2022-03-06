@@ -1,280 +1,323 @@
+# a0 - a3 : key
+# s0 - s3 : plaintext/ciphertext
+# s4 : while counter
+# s5 : s_box address
+# s6-s9 : temporary
+# a4 : round constant
+# s10, s11 : benchmarking
+
+.macro RightShift dst, src, mask, shift
+	li t0, \mask
+	and t0, \src, t0
+	srl t0, t0, \shift
+	or \dst, \dst, t0
+.endm
+
+.macro LeftShift dst, src, mask, shift
+	li t0, \mask
+	and t0, \src, t0
+	sll t0, t0, \shift
+	or \dst, \dst, t0
+.endm
+
+.macro Subst dst, src
+	and t0, \src, 0xf
+	add t1, s5, t0 # compute the address of the new nibble
+	lb t1, 0(t1)
+	sll t1, t1, 28
+
+	srl \src, \src, 4
+	srl \dst, \dst, 4
+	
+	or \dst, \dst, t1
+.endm
+
+.macro SubCells x
+	Subst s6, \x
+	Subst s6, \x
+	Subst s6, \x
+	Subst s6, \x
+
+	Subst s6, \x
+	Subst s6, \x
+	Subst s6, \x
+	Subst s6, \x
+
+	mv \x, s6
+.endm
+
+.macro PermBits
+	mv s6, zero
+	mv s7, zero
+	mv s8, zero
+	mv s9, zero
+	LeftShift s9, s0, 0x80000000, 0
+	LeftShift s6, s0, 0x40000000, 0
+	LeftShift s7, s0, 0x20000000, 0
+	LeftShift s8, s0, 0x10000000, 0
+	LeftShift s8, s0, 0x8000000, 4
+	LeftShift s9, s0, 0x4000000, 4
+	LeftShift s6, s0, 0x2000000, 4
+	LeftShift s7, s0, 0x1000000, 4
+	LeftShift s7, s0, 0x800000, 8
+	LeftShift s8, s0, 0x400000, 8
+	LeftShift s9, s0, 0x200000, 8
+	LeftShift s6, s0, 0x100000, 8
+	LeftShift s6, s0, 0x84000, 12
+	LeftShift s7, s0, 0x42000, 12
+	LeftShift s8, s0, 0x21000, 12
+	LeftShift s9, s0, 0x18000, 12
+	LeftShift s8, s0, 0x800, 16
+	LeftShift s9, s0, 0x400, 16
+	LeftShift s6, s0, 0x200, 16
+	LeftShift s7, s0, 0x100, 16
+	LeftShift s7, s0, 0x80, 20
+	LeftShift s8, s0, 0x40, 20
+	LeftShift s9, s0, 0x20, 20
+	LeftShift s6, s0, 0x10, 20
+	LeftShift s6, s0, 0x8, 24
+	LeftShift s7, s0, 0x4, 24
+	LeftShift s8, s0, 0x2, 24
+	LeftShift s9, s0, 0x1, 24
+	RightShift s9, s1, 0x80000000, 8
+	RightShift s6, s1, 0x40000000, 8
+	RightShift s7, s1, 0x20000000, 8
+	RightShift s8, s1, 0x10000000, 8
+	RightShift s8, s1, 0x8000000, 4
+	RightShift s9, s1, 0x4000000, 4
+	RightShift s6, s1, 0x2000000, 4
+	RightShift s7, s1, 0x1000000, 4
+	LeftShift s7, s1, 0x800000, 0
+	LeftShift s8, s1, 0x400000, 0
+	LeftShift s9, s1, 0x200000, 0
+	LeftShift s6, s1, 0x100000, 0
+	LeftShift s6, s1, 0x84000, 4
+	LeftShift s7, s1, 0x42000, 4
+	LeftShift s8, s1, 0x21000, 4
+	LeftShift s9, s1, 0x18000, 4
+	LeftShift s8, s1, 0x800, 8
+	LeftShift s9, s1, 0x400, 8
+	LeftShift s6, s1, 0x200, 8
+	LeftShift s7, s1, 0x100, 8
+	LeftShift s7, s1, 0x80, 12
+	LeftShift s8, s1, 0x40, 12
+	LeftShift s9, s1, 0x20, 12
+	LeftShift s6, s1, 0x10, 12
+	LeftShift s6, s1, 0x8, 16
+	LeftShift s7, s1, 0x4, 16
+	LeftShift s8, s1, 0x2, 16
+	LeftShift s9, s1, 0x1, 16
+	RightShift s9, s2, 0x80000000, 16
+	RightShift s6, s2, 0x40000000, 16
+	RightShift s7, s2, 0x20000000, 16
+	RightShift s8, s2, 0x10000000, 16
+	RightShift s8, s2, 0x8000000, 12
+	RightShift s9, s2, 0x4000000, 12
+	RightShift s6, s2, 0x2000000, 12
+	RightShift s7, s2, 0x1000000, 12
+	RightShift s7, s2, 0x800000, 8
+	RightShift s8, s2, 0x400000, 8
+	RightShift s9, s2, 0x200000, 8
+	RightShift s6, s2, 0x100000, 8
+	RightShift s6, s2, 0x84000, 4
+	RightShift s7, s2, 0x42000, 4
+	RightShift s8, s2, 0x21000, 4
+	RightShift s9, s2, 0x18000, 4
+	LeftShift s8, s2, 0x800, 0
+	LeftShift s9, s2, 0x400, 0
+	LeftShift s6, s2, 0x200, 0
+	LeftShift s7, s2, 0x100, 0
+	LeftShift s7, s2, 0x80, 4
+	LeftShift s8, s2, 0x40, 4
+	LeftShift s9, s2, 0x20, 4
+	LeftShift s6, s2, 0x10, 4
+	LeftShift s6, s2, 0x8, 8
+	LeftShift s7, s2, 0x4, 8
+	LeftShift s8, s2, 0x2, 8
+	LeftShift s9, s2, 0x1, 8
+	RightShift s9, s3, 0x80000000, 24
+	RightShift s6, s3, 0x40000000, 24
+	RightShift s7, s3, 0x20000000, 24
+	RightShift s8, s3, 0x10000000, 24
+	RightShift s8, s3, 0x8000000, 20
+	RightShift s9, s3, 0x4000000, 20
+	RightShift s6, s3, 0x2000000, 20
+	RightShift s7, s3, 0x1000000, 20
+	RightShift s7, s3, 0x800000, 16
+	RightShift s8, s3, 0x400000, 16
+	RightShift s9, s3, 0x200000, 16
+	RightShift s6, s3, 0x100000, 16
+	RightShift s6, s3, 0x84000, 12
+	RightShift s7, s3, 0x42000, 12
+	RightShift s8, s3, 0x21000, 12
+	RightShift s9, s3, 0x18000, 12
+	RightShift s8, s3, 0x800, 8
+	RightShift s9, s3, 0x400, 8
+	RightShift s6, s3, 0x200, 8
+	RightShift s7, s3, 0x100, 8
+	RightShift s7, s3, 0x80, 4
+	RightShift s8, s3, 0x40, 4
+	RightShift s9, s3, 0x20, 4
+	RightShift s6, s3, 0x10, 4
+	LeftShift s6, s3, 0x8, 0
+	LeftShift s7, s3, 0x4, 0
+	LeftShift s8, s3, 0x2, 0
+	LeftShift s9, s3, 0x1, 0
+
+	mv s0, s6
+	mv s1, s7
+	mv s2, s8
+	mv s3, s9
+.endm
+
+.macro ExpandKey dst0, dst1, dst2, dst3, src
+	and \dst3, \src, 0x1
+	LeftShift \dst3, \src, 0x2, 3
+	LeftShift \dst3, \src, 0x4, 6
+	LeftShift \dst3, \src, 0x8, 9
+	LeftShift \dst3, \src, 0x10, 12
+	LeftShift \dst3, \src, 0x20, 15
+	LeftShift \dst3, \src, 0x40, 18
+	LeftShift \dst3, \src, 0x80, 21
+
+	mv \dst2, zero
+	RightShift \dst2, \src, 0x100, 8
+	RightShift \dst2, \src, 0x200, 5
+	RightShift \dst2, \src, 0x400, 2
+	LeftShift \dst2, \src, 0x800, 1
+	LeftShift \dst2, \src, 0x1000, 4
+	LeftShift \dst2, \src, 0x2000, 7
+	LeftShift \dst2, \src, 0x4000, 10
+	LeftShift \dst2, \src, 0x8000, 13
+
+	mv \dst1, zero
+	RightShift \dst1, \src, 0x10000, 16
+	RightShift \dst1, \src, 0x20000, 13
+	RightShift \dst1, \src, 0x40000, 10
+	RightShift \dst1, \src, 0x80000, 7
+	RightShift \dst1, \src, 0x100000, 4
+	RightShift \dst1, \src, 0x200000, 1
+	LeftShift \dst1, \src, 0x400000, 2
+	LeftShift \dst1, \src, 0x800000, 5
+
+	mv \dst0, zero
+	RightShift \dst0, \src, 0x1000000, 24
+	RightShift \dst0, \src, 0x2000000, 21
+	RightShift \dst0, \src, 0x4000000, 18
+	RightShift \dst0, \src, 0x8000000, 15
+	RightShift \dst0, \src, 0x10000000, 12
+	RightShift \dst0, \src, 0x20000000, 9
+	RightShift \dst0, \src, 0x40000000, 6
+	RightShift \dst0, \src, 0x80000000, 3
+.endm
+
+.macro UpdateKey
+	li t0, 0xfffc0000
+	and t0, a0, t0
+	li t1, 0x00030000
+	and t1, a0, t1
+	srl t0, t0, 2
+	sll t1, t1, 14
+	or t0, t0, t1
+
+	li t1, 0x0000f000
+	and t1, a0, t1
+	li t2, 0x00000fff
+	and t2, a0, t2
+	srl t1, t1, 12
+	sll t2, t2, 4
+	or t1, t1, t2
+
+	mv a0, a1
+	mv a1, a2
+	mv a2, a3
+	or a3, t0, t1
+.endm
 
 .section .text
 	.globl main
-
-	SUBST: # SubCells | substitute a single nibble
-		
-		mv t4, zero # counter
-		li t5, 8 # limit for while
-
-		DO_0:
-		
-		andi t1, t0, 0xf # mask the rightmost nibble
-		div t2, t1, s5 # find the byte in the s-box
-		rem t3, t1, s5 # 0:left-most nibble | 1:right-most nibble
-		xori t3, t3, 1 # 1:left-most nibble | 0:right-most nibble
-		mul t3, t3, s6 # 4:left-most nibble | 0:right-most nibble
-		add t1, s11, t2 # compute address of substitution byte
-		lb t1, 0(t1) # load substitution byte
-		srl t1, t1, t3 # subst. nibble is the right most
-		slli t1, t1, 28 # subst. nibble is the left most in 32-bit word
-		srli t0, t0, 4 # shift plaintext to right by 1 nibble
-		or t0, t0, t1 # introduce substituted nibble in the plaintext
-		
-		addi t4, t4, 1 # increment counter
-		WHILE_0: bne t4, t5, DO_0 # while t4 < t5 
-		
-		jalr zero, 0(ra) # return
-
-	PERM:
-		mv t2, zero # counter
-		li t3, 32 # limit for while
-
-		DO_1:
-			lb t4, 0(s5) # load the new position
-			mv t5, t0 # make a copy of input
-			
-			li t1, 31
-			sub t6, t1, t2 # compute the left shift : t6 = 31 - pos
-			sll t5, t5, t6 # clear left bits | _
-			srli t5, t5, 31 # clear right bits | used instead of mask
-
-			blt t4, t3, CASE_1 # new pos < 32
-			li t1, 64
-			blt t4, t1, CASE_2 # new pos < 64
-			li t1, 96
-			blt t4, t1, CASE_3 # new pos < 96
-			jal zero, CASE_4 # new pos < 128 
-			CASE_1:
-				sll t5, t5, t4 # move to the new position
-				or s6, s6, t5 # store the result | block 0
-
-				jal zero, DONE_1
-			CASE_2:
-				addi t4, t4, -32 # correct new pos | new_pos = new_pos - 32
-				sll t5, t5, t4 # move to the new position
-				or s7, s7, t5 # store the result | block 1
-				jal zero, DONE_1
-			CASE_3:
-				addi t4, t4, -64 # new pos = new pos - 64
-				sll t5, t5, t4 # move to the new position
-				or s8, s8, t5 # store the result | block 2
-				jal zero, DONE_1
-			CASE_4:
-				addi t4, t4, -96 # new pos = new pos - 96
-				sll t5, t5, t4 # move to the new position
-				or s9, s9, t5 # store the result | block 3
-			DONE_1:
-
-			addi s5, s5, 1 # increment p-box location 
-			addi t2, t2, 1 # increment counter
-		WHILE_1: bne t2, t3, DO_1 # while t2 < t3
-		
-		jalr zero, 0(ra) # return
-
-	KEY:
-		#---add round key---
-		mv t0, a5	   # _ 
-		sll t0, t0, 16 # _
-		or t0, t0, a4  # Set U = k_5 || k_4
-		
-		mv t1, a1	   # _
-		sll t1, t1, 16 # _
-		or t1, t1, a0  # Set V = k_1 || k_0
-		DEBUG1:
-		mv t2, s0 # copy text block 0
-		jal tp, ADDKEY
-		mv s0, t2
-		DEBUG2:
-		mv t2, s1
-		jal tp, ADDKEY
-		mv s1, t2
-
-		mv t2, s2
-		jal tp, ADDKEY
-		mv s2, t2
-
-		mv t2, s3
-		jal tp, ADDKEY
-		mv s3, t2
-
-		#---add round constant---
-
-		mv t0, zero # counter
-		li t1, 6 # while_bound
-		li t2, 3 # i for b_i
-		DO_4:
-		
-		mv t3, s4 # copy round constant
-		srl t3, t3, t0
-		andi t3, t3, 0x1 # mask the right most bit : c_1
-		sll t3, t3, t2 # match b_7
-		xor s0, s0, t3 # apply round constant
-
-		addi t2, t2, 4 # increment i of b_i
-		addi t0, t0, 1 # increment counter
-		WHILE_4: bne t0, t1, DO_4 # while t0 < t1		
-		
-		li t0, 0x80000000
-		xor s3, s3, t0 # b_{n-1} = b_{n-1} xor 1
-
-		#---update key---
-		mv t0, a0 # copy k_0
-		srli t0, t0, 12 # k_0 >> 12
-		slli a0, a0, 20 # isolate the trucated 12 bits
-		srli a0, a0, 16 # move trucated bits to the right position
-		or t0, t0, a0 # k_0 >>> 12
-
-		mv t1, a1 # copy k_1
-		srli t1, t1, 2 # k_1 >> 2
-		andi a1, a1, 0x3 # isolate the truncated 2 bits
-		slli a1, a1, 14 # move truncated bits to the right position
-		or t1, t1, a1 # k_1 >>> 2
-
-		mv a0, a2
-		mv a1, a3
-		mv a2, a4
-		mv a3, a5
-		mv a4, a6
-		mv a5, a7
-		mv a6, t0
-		mv a7, t1
-
-		#---update round constant---
-
-		mv t4, s4
-		mv t5, s4 
-
-		srli t4, t4, 4
-		srli t5, t5, 5
-
-		andi t4, t4, 0x1 # isolated c_4
-		andi t5, t5, 0x1 # isolated c_5
-
-		xor t4, t4, t5 # c_4 xor c_5
-		xori t4, t4, 0x1 # c_4 xor c_5 xor 1
-
-		slli s4, s4, 1 # c << 1
-		or s4, s4, t4 # c_0 = c_4 xor c_5 xor 1
-		
-		jalr zero, 0(ra) # return
-
-	ADDKEY:
-		mv t3, zero # counter
-		li t4, 8 # limit 8
-		DO_2:
-			andi t5, t0, 0x1 # isolate right most bit of U
-			andi t6, t1, 0x1 # isolate right most bit of V
-			
-			slli s11, t3, 2 # 4i
-			addi s11, s11, 1 # 4i + 1
-			sll t6, t6, s11 # v_{4i + 1}
-			addi s11, s11, 1 # 4i + 2
-			sll t5, t5, s11 # u_{4i + 2}
-			
-			xor t2, t2, t5 # b_{4i+2} <- b_{4i+2} xor u_i
-			xor t2, t2, t6 # b_{4i+1} <- b_{4i+1} xor v_i
-
-			srli t0, t0, 1 # update right most bit of U
-			srli t1, t1, 1 # update the right most bit of U
-		addi t3, t3, 1
-		WHILE_2: bne t3, t4, DO_2 # while counter < 8
-		jalr zero, 0(tp)
-
+	
 	main:
-		#---Initialization---
-		la t0, txt3 # plaintext
-		lw s0, 12(t0)
-		lw s1, 8(t0)
-		lw s2, 4(t0)
-		lw s3, 0(t0)
+		la t0, encrypt
+		jalr zero, 0(t0)
+
+.section .itim,"ax",@progbits
+	.globl encrypt
+
+	encrypt:
 		
-		li s4, 0x1 # round constant
-
-		la t0, key3 # key
-		li t1, 0xffff # when hw is loaded unused bits are set to 1. we must clean it
-		lh a1, 14(t0)
-		and a1, a1, t1
-		lh a2, 8(t0)
-		and a2, a2, t1
-		lh a3, 10(t0)
-		and a3, a3, t1
-		lh a4, 4(t0)
-		and a4, a4, t1
-		lh a5, 6(t0)
-		and a5, a5, t1
-		lh a6, 0(t0)
-		and a6, a6, t1
-		lh a7, 2(t0)
-		and a7, a7, t1
-		lh a0, 12(t0)
-		and a0, a0, t1
-		#--------------------
-
-		li s10, 40 # loop count
+		la s5, s_box # sbox
 		
-		DO_3:
-		#---SubCells---
-		SubCells:
-			la s11, s_box # get sbox address
-			li s5, 2 # constant : used for division 
-			li s6, 4 # constant : used for multiplication
+		la a4, const # round constant
+		
+		la t0, txt2_e # plaintext
+		lw s0, 0(t0)
+		lw s1, 4(t0)
+		lw s2, 8(t0)
+		lw s3, 12(t0)
+
+		la t0, key2	# key
+		lw a0, 12(t0)
+		lw a1, 8(t0)
+		lw a2, 4(t0)
+		lw a3, 0(t0)
+
+		li s4, 40
+		DO:
+			#---SubCells---
+
+			SubCells s0
+			SubCells s1
+			SubCells s2
+			SubCells s3
 			
-			mv t0, s0 # process 1st 32-bits
-			jal SUBST
-			mv s0, t0
-			
-			mv t0, s1 # process 2nd 32-bits
-			jal SUBST
-			mv s1, t0
 
-			mv t0, s2 # process 3rd 32-bits
-			jal SUBST
-			mv s2, t0
+			#---PermBits---
+			PermBits
+			#---AddRoundKey---
+			ExpandKey s6, s7, s8, s9, a0
+			sll s6, s6, 1
+			sll s7, s7, 1
+			sll s8, s8, 1
+			sll s9, s9, 1
 
-			mv t0, s3 # process 4th 32-bits
-			jal SUBST
-			mv s3, t0
-		#--------------
-		#---PermBits---
-		PermBits:
-			la s5, p_box # address of  the p-box
-			mv s6, zero # new block 0 
-			mv s7, zero # new block 1 
-			mv s8, zero # new block 2 
-			mv s9, zero # new block 3 
+			xor s0, s0, s6
+			xor s1, s1, s7
+			xor s2, s2, s8
+			xor s3, s3, s9
 
-			mv t0, s0 # process old block 0
-			jal PERM
-			mv t0, s1 # process old block 1
-			jal PERM
-			mv t0, s2 # process old block 2
-			jal PERM
-			mv t0, s3 # process old block 3
-			jal PERM
-			
-			mv s0, s6 # store results
-			mv s1, s7
-			mv s2, s8
-			mv s3, s9
-		#--------------
-		#---AddRoundKey---
-		AddRoundKey:
-		jal KEY
-		#-----------------
-		addi s10, s10, -1 # decrement loop count
-		WHILE_3: bne s10, zero, DO_3 # loop count != zero
-		END: j END
+			ExpandKey s6, s7, s8, s9, a2
+			sll s6, s6, 2
+			sll s7, s7, 2
+			sll s8, s8, 2
+			sll s9, s9, 2
 
-.section .rodata
-	txt1: .word 0x0, 0x0, 0x0, 0x0 
-	key1: .word 0x0, 0x0, 0x0, 0x0
+			xor s0, s0, s6
+			xor s1, s1, s7
+			xor s2, s2, s8
+			xor s3, s3, s9
 
-	txt2: .word 0xfedcba98, 0x76543210, 0xfedcba98, 0x76543210 
+			#-----Add Round Constant-----
+			lw t0, 0(a4)
+			xor s3, s3, t0
+
+			li t0, 0x80000000
+			xor s0, s0, t0
+			#-----Update Round Key-----
+			UpdateKey
+			#-----Update Round Constant-----
+			add a4, a4, 4
+		addi s4, s4, -1
+		WHILE: bne s4, zero, DO
+
+	END: j END
+
+
+.section .data
+	
+	txt2_e: .word 0xfedcba98, 0x76543210, 0xfedcba98, 0x76543210
 	key2: .word 0xfedcba98, 0x76543210, 0xfedcba98, 0x76543210 
 
-	txt3: .word 0xe39c141f, 0xa57dba43, 0xf08a85b6, 0xa91f86c1
-	key3: .word 0xd0f5c59a, 0x7700d3e7, 0x99028fa9, 0xf90ad837 
- 
-	s_box: .byte 0x1a, 0x4c, 0x6f, 0x39, 0x2d, 0xb7, 0x50, 0x8e
-	p_box: .byte 0, 33, 66, 99, 96, 1, 34, 67, 64, 97, 2, 35, 32, 65, 98, 3, 4, 37, 70, 103, 100, 5, 38, 71, 68, 101, 6, 39, 36, 69, 102, 7, 8, 41, 74, 107, 104, 9, 42, 75, 72, 105, 10, 43, 40, 73, 106, 11, 12, 45, 78, 111, 108, 13, 46, 79, 76, 109, 14, 47, 44, 77, 110, 15, 16, 49, 82, 115, 112, 17, 50, 83, 80, 113, 18, 51, 48, 81, 114, 19, 20, 53, 86, 119, 116, 21, 54, 87, 84, 117, 22, 55, 52, 85, 118, 23, 24, 57, 90, 123, 120, 25, 58, 91, 88, 121, 26, 59, 56, 89, 122, 27, 28, 61, 94, 127, 124, 29, 62, 95, 92, 125, 30, 63, 60, 93, 126, 31
+	const: .word 0x8,0x88,0x888,0x8888,0x88888,0x888880,0x888808,0x888088,0x880888,0x808888,0x88880,0x888800,0x888008,0x880088,0x800888,0x8880,0x88808,0x888080,0x880808,0x808088,0x80880,0x808800,0x88000,0x880000,0x800008,0x80,0x808,0x8088,0x80888,0x808880,0x88800,0x888000,0x880008,0x800088,0x880,0x8808,0x88088,0x880880,0x808808,0x88080,0x880800,0x808008,0x80080,0x800800,0x8000,0x80008,0x800080,0x800
+
+	s_box: .byte 0x1, 0xa, 0x4, 0xc, 0x6, 0xf, 0x3, 0x9, 0x2, 0xd, 0xb, 0x7, 0x5, 0x0, 0x8, 0xe

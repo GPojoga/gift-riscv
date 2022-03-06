@@ -1,257 +1,216 @@
+# s0, s1 : plaintext/ciphertext
+# a0-a7 : key
+# s2 : s-box address 
+# s3, s4 : temporary
+# s5 : round constant
+# s6 : while counter
+# s10-s11: benchmarking
+
+.macro Subst dst, src
+	and t0, \src, 0xf
+	add t1, s2, t0 # compute the address of the new nibble
+	lb t1, 0(t1)
+	sll t1, t1, 28
+
+	srl \src, \src, 4
+	srl \dst, \dst, 4
+	
+	or \dst, \dst, t1
+.endm
+
+.macro SubCells x
+	Subst s3, \x
+	Subst s3, \x
+	Subst s3, \x
+	Subst s3, \x
+
+	Subst s3, \x
+	Subst s3, \x
+	Subst s3, \x
+	Subst s3, \x
+
+	mv \x, s3
+.endm
+
+.macro RightShift dst, src, mask, shift
+	li t0, \mask
+	and t0, \src, t0
+	srl t0, t0, \shift
+	or \dst, \dst, t0
+.endm
+
+.macro LeftShift dst, src, mask, shift
+	li t0, \mask
+	and t0, \src, t0
+	sll t0, t0, \shift
+	or \dst, \dst, t0
+.endm
+
+.macro PermBits
+	mv s3, zero
+	mv s4, zero
+	RightShift s4, s0, 0x80000000, 16
+	LeftShift s3, s0, 0x40000100, 0
+	RightShift s3, s0, 0x20000000, 16
+	LeftShift s4, s0, 0x10000400, 0
+	LeftShift s4, s0, 0x8000020, 4
+	RightShift s4, s0, 0x4000000, 12
+	LeftShift s3, s0, 0x2000080, 4
+	RightShift s3, s0, 0x1000000, 12
+	RightShift s3, s0, 0x800000, 8
+	LeftShift s4, s0, 0x400001, 8
+	RightShift s4, s0, 0x200000, 8
+	LeftShift s3, s0, 0x100004, 8
+	LeftShift s3, s0, 0x84000, 12
+	RightShift s3, s0, 0x42000, 4
+	LeftShift s4, s0, 0x21000, 12
+	RightShift s4, s0, 0x18000, 4
+	LeftShift s4, s0, 0x800, 16
+	LeftShift s3, s0, 0x200, 16
+	LeftShift s4, s0, 0x40, 20
+	LeftShift s3, s0, 0x10, 20
+	LeftShift s3, s0, 0x8, 24
+	LeftShift s4, s0, 0x2, 24
+	RightShift s4, s1, 0x80000000, 24
+	RightShift s3, s1, 0x40000100, 8
+	RightShift s3, s1, 0x20000000, 24
+	RightShift s4, s1, 0x10000400, 8
+	RightShift s4, s1, 0x8000020, 4
+	RightShift s4, s1, 0x4000000, 20
+	RightShift s3, s1, 0x2000080, 4
+	RightShift s3, s1, 0x1000000, 20
+	RightShift s3, s1, 0x800000, 16
+	LeftShift s4, s1, 0x400001, 0
+	RightShift s4, s1, 0x200000, 16
+	LeftShift s3, s1, 0x100004, 0
+	LeftShift s3, s1, 0x84000, 4
+	RightShift s3, s1, 0x42000, 12
+	LeftShift s4, s1, 0x21000, 4
+	RightShift s4, s1, 0x18000, 12
+	LeftShift s4, s1, 0x800, 8
+	LeftShift s3, s1, 0x200, 8
+	LeftShift s4, s1, 0x40, 12
+	LeftShift s3, s1, 0x10, 12
+	LeftShift s3, s1, 0x8, 16
+	LeftShift s4, s1, 0x2, 16
+	mv s0, s3
+	mv s1, s4
+.endm
+
+.macro ExpandKey dst0, dst1, src
+	and \dst1, \src, 0x1
+	LeftShift \dst1, \src, 0x2, 3
+	LeftShift \dst1, \src, 0x4, 6
+	LeftShift \dst1, \src, 0x8, 9
+	LeftShift \dst1, \src, 0x10, 12
+	LeftShift \dst1, \src, 0x20, 15
+	LeftShift \dst1, \src, 0x40, 18
+	LeftShift \dst1, \src, 0x80, 21
+
+	mv \dst0, zero
+	RightShift \dst0, \src, 0x100, 8
+	RightShift \dst0, \src, 0x200, 5
+	RightShift \dst0, \src, 0x400, 2
+	LeftShift \dst0, \src, 0x800, 1
+	LeftShift \dst0, \src, 0x1000, 4
+	LeftShift \dst0, \src, 0x2000, 7
+	LeftShift \dst0, \src, 0x4000, 10
+	LeftShift \dst0, \src, 0x8000, 13
+.endm
+
+.macro UpdateKey 
+	li t0, 0xfff
+	and t0, a0, t0
+	srl t1, a0, 12
+	sll t0, t0, 4
+
+	and t2, a1, 0x3
+	srl t3, a1, 2
+	sll t2, t2, 14
+	
+	mv a0, a2
+	mv a1, a3
+	mv a2, a4
+	mv a3, a5
+	mv a4, a6
+	mv a5, a7
+	or a6, t0, t1 
+	or a7, t2, t3
+.endm
 
 .section .text
 	.globl main
-
-	SUBST: # SubCells | substitute a single nibble
-		
-		mv t4, zero # counter
-		li t5, 8 # limit for while
-
-		DO_0:
-		
-		andi t1, t0, 0xf # mask the rightmost nibble
-		div t2, t1, s4 # find the byte in the s-box
-		rem t3, t1, s4 # 0:left-most nibble | 1:right-most nibble
-		xori t3, t3, 1 # 1:left-most nibble | 0:right-most nibble
-		mul t3, t3, s5 # 4:left-most nibble | 0:right-most nibble
-		add t1, s3, t2 # compute address of substitution byte
-		lb t1, 0(t1) # load substitution byte
-		srl t1, t1, t3 # subst. nibble is the right most
-		slli t1, t1, 28 # subst. nibble is the left most in 32-bit word
-		srli t0, t0, 4 # shift plaintext to right by 1 nibble
-		or t0, t0, t1 # introduce substituted nibble in the plaintext
-		
-		addi t4, t4, 1 # increment counter
-		WHILE_0: bne t4, t5, DO_0 # while t4 < t5 
-		
-		jalr zero, 0(ra) # return
-
-	PERM:
-		mv t2, zero # counter
-		li t3, 32 # limit for while
-
-		DO_1:
-		lb t4, 0(s3) # load the new position
-		mv t5, t0 # make a copy of input
-		
-		sub t6, s6, t2 # compute the left shift : t6 = 31 - pos
-		sll t5, t5, t6 # clear left bits | _
-		srl t5, t5, s6 # clear left bits | used instead of mask
-
-		bge t4, t3, ELSE_1 # if new pos < 32
-		THEN_1:
-			sll t5, t5, t4 # move to the new position
-			or s4, s4, t5 # store the result
-
-			jal zero, DONE_1
-		ELSE_1:
-			sub t4, t4, t3 # correct new pos | new_pos = new_pos - 32
-			sll t5, t5, t4 # move to the new position
-			or s5, s5, t5 # store the result | 
-		DONE_1:
-
-		addi s3, s3, 1 # increment p-box location 
-		addi t2, t2, 1 # increment counter
-		WHILE_1: bne t2, t3, DO_1 # while t2 < t3
-		
-		jalr zero, 0(ra) # return
-
-	KEY:
-		#---add round key---
-		mv t0, zero # counter
-		li t1, 8 # limit for while
-
-		DO_2: # add round key to lower 32-bits
-
-		mv t2, a0 # V 
-		mv t3, a1 # U
-
-		srl t2, t2, t0 # v_i is the right-most bit
-		srl t3, t3, t0 # u_i is the left-most bit
-
-		andi t2, t2, 0x1 # mask the right-most bit (v_i)
-		andi t3, t3, 0x1 # mask the right-most bit (u_i)
-
-		mv t4, t0 	  # i = counter
-		slli t4, t4, 2 # i = i * 4
-
-		sll t2, t2, t4 # move bit v_i to position i
-		addi t4, t4, 1 # i = i + 1
-		sll t3, t3, t4 # move bit u_i to position i
-
-		xor s1, s1, t2 # xor v_i with the plaintext
-		xor s1, s1, t3 # xor u_i withe the plaintext 
-
-		addi t0, t0, 1 # increment counter
-		WHILE_2: bne t0, t1, DO_2 # while t0 < t1
-
-		li t1, 16 # limit for while
-
-		DO_3: # add round key to upper 32-bits
-
-		mv t2, a0 # V
-		mv t3, a1 # U
-
-		srl t2, t2, t0 # v_i is the right-most bit
-		srl t3, t3, t0 # u_i is the left-most bit
-
-		andi t2, t2, 0x1 # mask the right-most bit (v_i)
-		andi t3, t3, 0x1 # mask the right-most bit (u_i)
-
-		mv t4, t0 	  # i = counter
-		slli t4, t4, 2 # i = i * 4
-
-		sll t2, t2, t4 # move bit v_i to position i
-		addi t4, t4, 1 # i = i + 1
-		sll t3, t3, t4 # move bit u_i to position i
-
-		xor s0, s0, t2 # xor v_i with the plaintext
-		xor s0, s0, t3 # xor u_i withe the plaintext 
-
-		addi t0, t0, 1 # increment counter
-		WHILE_3: bne t0, t1, DO_3 # while t0 < t1
-		#---add round constant---
-
-		mv t0, zero # counter
-		li t1, 6 # while_bound
-		li t2, 3 # i for b_i
-		DO_4:
-		
-		mv t3, s2 # copy round constant
-		srl t3, t3, t0
-		andi t3, t3, 0x1 # mask the right most bit : c_1
-		sll t3, t3, t2 # match b_7
-		xor s1, s1, t3 # apply round constant
-
-		addi t2, t2, 4 # increment i of b_i
-		addi t0, t0, 1 # increment counter
-		WHILE_4: bne t0, t1, DO_4 # while t0 < t1		
-		
-		li t0, 0x80000000
-		xor s0, s0, t0 # b_{n-1} = b_{n-1} xor 1
-
-		#---update key---
-		mv t0, a0 # copy k_0
-		srli t0, t0, 12 # k_0 >> 12
-		slli a0, a0, 20 # isolate the trucated 12 bits
-		srli a0, a0, 16 # move trucated bits to the right position
-		or t0, t0, a0 # k_0 >>> 12
-
-		mv t1, a1 # copy k_1
-		srli t1, t1, 2 # k_1 >> 2
-		andi a1, a1, 0x3 # isolate the truncated 2 bits
-		slli a1, a1, 14 # move truncated bits to the right position
-		or t1, t1, a1 # k_1 >>> 2
-
-		mv a0, a2
-		mv a1, a3
-		mv a2, a4
-		mv a3, a5
-		mv a4, a6
-		mv a5, a7
-		mv a6, t0
-		mv a7, t1
-
-		#---update round constant---
-
-		mv t4, s2 
-		mv t5, s2 
-
-		srli t4, t4, 4
-		srli t5, t5, 5
-
-		andi t4, t4, 0x1 # isolated c_4
-		andi t5, t5, 0x1 # isolated c_5
-
-		xor t4, t4, t5 # c_4 xor c_5
-		xori t4, t4, 0x1 # c_4 xor c_5 xor 1
-
-		slli s2, s2, 1 # c << 1
-		or s2, s2, t4 # c_0 = c_4 xor c_5 xor 1
-		
-		jalr zero, 0(ra) # return
-
+	
 	main:
-		#---Initialization---
-		li s2, 0x1 # round constant
+		la t0, encrypt
+		jalr zero, 0(t0)
+
+.section .itim,"ax",@progbits
+	.globl encrypt
+
+	encrypt:
+		la s2, s_box # s_box address 
+		la s5, const # round constant
 
 		la s0, txt2_e # plaintext
 		lw s1, 4(s0)
 		lw s0, 0(s0) 
-		
-		la a0, key2 # key
-		li t0, 0xffff # when hw is loaded unused bits are set to 1. we must clean it
-		lh a1, 14(a0)
-		and a1, a1, t0
-		lh a2, 8(a0)
-		and a2, a2, t0
-		lh a3, 10(a0)
-		and a3, a3, t0
-		lh a4, 4(a0)
-		and a4, a4, t0
-		lh a5, 6(a0)
-		and a5, a5, t0
-		lh a6, 0(a0)
-		and a6, a6, t0
-		lh a7, 2(a0)
-		and a7, a7, t0
-		lh a0, 12(a0)
-		and a0, a0, t0
-		#--------------------
-		mv s10, zero # counter
-		li s11, 28 # limit for while
-		DO_5:
+
+		la t0, key2 # key
+		lw a0, 28(t0)
+		lw a1, 24(t0)
+		lw a2, 20(t0)
+		lw a3, 16(t0)
+		lw a4, 12(t0)
+		lw a5, 8(t0)
+		lw a6, 4(t0)
+		lw a7, 0(t0)
+
+		li s6, 28 # while counter
+		DO:
 			#---SubCells---
-			SubCells:
-			la s3, s_box # get sbox address
-			li s4, 2 # constant : used for division
-			li s5, 4 # constant : used for multiplication  
-
-			mv t0, s0 # process first 32-bits
-			jal SUBST
-			mv s0, t0
-			
-			mv t0, s1 # process second 32-bits
-			jal SUBST
-			mv s1, t0
-			#--------------
-			#---Permbits---
-			PermBits:
-			la s3, p_box # get pbox address
-			mv s4, zero # will hold the resulting 1st 32-bits
-			mv s5, zero # will hold the resulting last 32-bits
-			li s6, 31 # constant : used for shifting
-
-			mv t0, s1 # process first 32-bits
-			jal PERM
-
-			mv t0, s0 # process last 32-bits
-			jal PERM 
-			
-			mv s1, s4 #store results
-			mv s0, s5 
-			#--------------
+			SubCells s0
+			SubCells s1
+			#---PermBits---
+			PermBits
 			#---AddRoundKey---
-			AddRoundKey:
-			jal KEY
+			ExpandKey s3, s4, a0
 
-		addi s10, s10, 1 # increment counter
-		WHILE_5: bne s10, s11, DO_5 # while s10 < s11
+			xor s0, s0, s3
+			xor s1, s1, s4
+
+			ExpandKey s3, s4, a1
+			sll s3, s3, 1
+			sll s4, s4, 1
+
+			xor s0, s0, s3
+			xor s1, s1, s4
+
+			#-----Add Round Constant-----
+			lw t0, 0(s5)
+			xor s1, s1, t0
+
+			li t0, 0x80000000
+			xor s0, s0, t0
+			#-----Update Round Key-----
+			UpdateKey
+			#-----Update Round Constant-----
+			add s5, s5, 4
+		
+		add s6, s6, -1
+		WHILE: bne s6, zero, DO
 
 	END: j END
 
-.section .rodata
-	txt1_e: .word 0x0, 0x0
-	txt1_d: .word 0xf62bc3ef, 0x34f775ac
-	key1: .word 0x0, 0x0, 0x0, 0x0
+.section .data
 
-	txt2_e: .word 0xfedcba98, 0x76543210
-	txt2_d: .word 0xc1b71f66, 0x160ff587  
-	key2: .word 0xfedcba98, 0x76543210, 0xfedcba98, 0x76543210 
+	txt2_e: .word 0xfedcba98, 0x76543210  
+	key2: .word 0xfedc, 0xba98, 0x7654, 0x3210, 0xfedc, 0xba98, 0x7654, 0x3210 
 
-	txt3_e: .word 0xc450c772, 0x7a9b8a7d 
-	txt3_d: .word 0xe3272885, 0xfa94ba8b 
-	key3: .word 0xbd91731e, 0xb6bc2713, 0xa1f9f6ff, 0xc75044e7 
+	const: .word 0x8,0x88,0x888,0x8888,0x88888,0x888880,0x888808, 0x888088,0x880888,0x808888,0x88880,0x888800,0x888008,0x880088, 0x800888,0x8880,0x88808,0x888080,0x880808,0x808088,0x80880, 0x808800,0x88000,0x880000,0x800008,0x80,0x808,0x8088
 
-	s_box: .byte 0x1a, 0x4c, 0x6f, 0x39, 0x2d, 0xb7, 0x50, 0x8e
-	p_box: .byte 0, 17, 34, 51, 48, 1, 18, 35, 32, 49, 2, 19, 16, 33, 50, 3, 4, 21, 38, 55, 52, 5, 22, 39, 36, 53, 6, 23, 20, 37, 54, 7, 8,  25, 42, 59, 56, 9, 26, 43, 40, 57, 10, 27, 24, 41, 58, 11, 12, 29, 46, 63, 60, 13, 30, 47, 44, 61, 14, 31, 28, 45, 62, 15
+	s_box: .byte 0x1, 0xa, 0x4, 0xc, 0x6, 0xf, 0x3, 0x9, 0x2, 0xd, 0xb, 0x7, 0x5, 0x0, 0x8, 0xe
+
+.section .bss
+	benchmark: .word 0
+	

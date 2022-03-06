@@ -105,8 +105,18 @@
 
 .section .text
 	.globl main
-
+	
 	main:
+		la t0, encrypt
+		jalr zero, 0(t0)
+
+.section .itim,"ax",@progbits
+	.globl encrypt
+
+	encrypt:
+
+		csrr s9, mcycle # MEASUREMENT
+
 		la s4, const # round constant
 
 		la t0, txt2_e # load plaintext
@@ -120,13 +130,13 @@
 		lw a1, 8(t0) # k3||k2
 		lw a2, 4(t0) # k5||k4
 		lw a3, 0(t0) # k7||k6
-		
+
 		li s5, 8
 		DO:
 			#+++SUBROUND 1+++
 			SubCells s0, s1, s2, s3
-
 			#---PermBits---
+
 			li t5, 0x11111111
 			li t6, 0x77777777
 			#-----Slice 0-----
@@ -151,6 +161,7 @@
 			and s2, s2, t5 # clean space for t0
 			or s2, s2, t0
 
+
 			#---AddRoundKey---
 
 			Transpose32_8 a4, a0
@@ -174,14 +185,14 @@
 
 			#---Key Scheduler---
 			add s4, s4, 4 # increment round constant
+
 			UpdateKey
 			RotateKeys
-
+			
 			#+++SUBROUND 2+++
 			SubCells s0, s1, s2, s3
 
 			#---PermBits---
-			
 			#-----Slice 0-----
 			li t0, 0xfff0fff0
 			and t0, s0, t0
@@ -210,6 +221,7 @@
 			or s2, t0, t1
 
 			#---AddRoundKey---
+
 			li a5, 0x00200400
 			and a5, a0, a5
 			LeftShift  a5, a0, 0x00000002, 30
@@ -265,6 +277,7 @@
 
 			#---Key Scheduler---
 			add s4, s4, 4 # increment round constant
+
 			UpdateKey
 			RotateKeys
 
@@ -272,7 +285,6 @@
 			SubCells s0, s1, s2, s3
 
 			#---PermBits---
-			
 			#-----Slice 0-----
 			mv a4, zero
 			LeftShift a4, s0, 0x00005555, 17
@@ -292,6 +304,7 @@
 			mv s2, a4
 
 			#---AddRoundKey---
+
 			li t0, 0x00200400
 			and a4, a0, t0
 
@@ -355,7 +368,6 @@
 			SubCells s0, s1, s2, s3
 
 			#---PermBits---
-			
 			#-----Slice 0-----
 			mv a4, zero
 			RightShift a4, s0, 0xc0c0c0c0, 6
@@ -371,6 +383,7 @@
 			RightShift a4, s2, 0xfcfcfcfc, 2
 			LeftShift a4, s2, 0x03030303, 6
 			mv s2, a4
+
 			#---AddRoundKey---
 
 			Transpose32_4 a4, a0
@@ -401,7 +414,6 @@
 			SubCells s0, s1, s2, s3
 
 			#---PermBits---
-			
 			#-----Slice 0-----
 			li t0, 0xff000000
 			and t0, s0, t0
@@ -419,8 +431,8 @@
 			sll t0, t0, 24
 			srl s2, s2, 8
 			or s2, s2, t0
-			#---AddRoundKey---
 
+			#---AddRoundKey---
 			xor s1, s1, a0 # add k1||k0 to slice 1
 			xor s2, s2, a2 # add k5||k4 to slice 2 
 
@@ -434,10 +446,14 @@
 
 		addi s5, s5, -1
 		WHILE: bne zero, s5, DO 
+
+		csrr s10, mcycle # MEASUREMENT
+		sub s10, s10, s9
+
 		END: j END
 
 
-.section .rodata
+.section .data
 	txt2_e: .word 0xaaaaaaaa, 0xcccccccc, 0xf0f0f0f0, 0xff00ff00 
 	key2: .word 0xfedcba98, 0x76543210, 0xfedcba98, 0x76543210
 
