@@ -1,68 +1,23 @@
-
-.macro RightShift dst, src, mask, shift
-	li t0, \mask
-	and t0, \src, t0
-	srl t0, t0, \shift
-	or \dst, \dst, t0
-.endm
-
-.macro LeftShift dst, src, mask, shift
-	li t0, \mask
-	and t0, \src, t0
-	sll t0, t0, \shift
-	or \dst, \dst, t0
-.endm
-
-.macro Transpose32_8 dst, src
-	li t0, 0xaa55aa55
-	and t1, \src, t0
-	RightShift t1, \src, 0x55005500, 7
-	LeftShift t1, \src, 0x00aa00aa, 7
-
-	li t0, 0xcccc3333
-	and t2, t1, t0
-	RightShift t2, t1, 0x33330000, 14
-	LeftShift t2, t1, 0x0000cccc, 14
-
-	li t0, 0xf000000f
-	and \dst, t2, t0
-	RightShift \dst, t2, 0x0f000000, 12
-	LeftShift \dst, t2,  0x00f00000, 4
-	RightShift \dst, t2, 0x000f0000, 8
-	LeftShift \dst, t2,  0x0000f000, 8
-	RightShift \dst, t2, 0x00000f00, 4
-	LeftShift \dst, t2,  0x000000f0, 12
-.endm
-
-.macro Transpose32_4 dst, src	
-	li t0, 0xf000000f
-	and t1, \src, t0
-	RightShift t1, \src, 0x0f000000, 4
-	RightShift t1, \src,  0x00f00000, 8
-	RightShift t1, \src, 0x000f0000, 12
-	LeftShift t1, \src,  0x0000f000, 12
-	LeftShift t1, \src, 0x00000f00, 8
-	LeftShift t1, \src,  0x000000f0, 4
-
-	li t0, 0xcccc3333
-	and t2, t1, t0
-	RightShift t2, t1, 0x33330000, 14
-	LeftShift t2, t1, 0x0000cccc, 14
-
-	li t0, 0xaa55aa55
-	and \dst, t2, t0
-	RightShift \dst, t2, 0x55005500, 7
-	LeftShift \dst, t2, 0x00aa00aa, 7
-.endm
+# s0 - s3 : plaintext
+# a0 : key V
+# a1 : key U
+# a2 : key pointer
+# s4 : round constant address
+# s5 : while counter
+# s11 : constant
 
 .section .text
 	.globl main
-
+	
 	main:
-		li s0, 0x12345678
-		Transpose32_8 s0, s0
-		Transpose32_4 s0, s0
-	END: j END
+		la t0, encrypt
+		jalr zero, 0(t0)
 
-.section .rodata
-	val: .byte 0x11, 0x42, 0x22, 0x33
+.section .itim,"ax",@progbits
+	.globl encrypt
+
+	encrypt:
+		csrr a3, mcycle
+		csrr a4, mcycle
+		sub a3, a4, a3
+		END: j END
